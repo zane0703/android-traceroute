@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">Traceroute</string>
+    <string name="ok">OK</string>
+    <string name="start">Start</string>
+    <string name="complated">Trace Completed</string>
+    <string name="ipv6">IPV6</string>
+    <string name="copied">Copied</string>
+    <string name="time_out">) Request timed out.</string>
+    <string name="unknown_host">unknown Host&#160;</string>
+    <string name="no_ipv6"><br/>or no IPV6 address available</string>
+    <string name="unreachable">Destination Unreachable</string>
 </resources>

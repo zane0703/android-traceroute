@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">路由追踪</string>
+    <string name="ok">好</string>
+    <string name="start">启动</string>
+    <string name="complated">路由追踪完成</string>
+    <string name="ipv6">IPV6</string>
+    <string name="copied">复制完成</string>
+    <string name="time_out">) 网络请求超时。</string>
+    <string name="unknown_host">未知域名&#160;</string>
+    <string name="no_ipv6"><br/>或者没有可用的 IPV6 地址</string>
+    <string name="unreachable">网络目标不可达</string>
+</resources>

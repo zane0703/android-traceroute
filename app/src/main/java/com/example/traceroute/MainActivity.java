@@ -12,9 +12,9 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+import  com.google.android.material.materialswitch.MaterialSwitch;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
@@ -37,9 +37,9 @@ public class MainActivity extends AppCompatActivity {
     private ListView listView;
     private Button button;
     private EditText editText;
-    private Switch isIpv6Switch;
-    private ArrayAdapter adapter;
-    ArrayList<String> listItems = new ArrayList<String>(65);
+    private MaterialSwitch isIpv6Switch;
+    private ArrayAdapter<String> adapter;
+    ArrayList<String> listItems = new ArrayList<>(65);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
         editText = findViewById(R.id.editTextText);
         isIpv6Switch = findViewById(R.id.switch1);
         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems);
+        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, listItems);
         listView.setAdapter(adapter);
         listView.setOnItemLongClickListener((v,v2, a,b)-> {
             if (v2 instanceof TextView) {
@@ -64,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
                 addr = addr.substring(addr.indexOf(')')+2);
                 ClipData clip = ClipData.newPlainText("ip address", addr);
                 clipboard.setPrimaryClip(clip);
-                Toast.makeText(this,"Coped", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this,R.string.copied, Toast.LENGTH_SHORT).show();
             }
 
             return  true;
@@ -100,13 +100,13 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                     if (ipAddress == null) {
-                        runOnUiThread(()-> showDialog("Unknown Host "+ hostName + (isIPV6?"\nor no IPV6 address available": "") ));
+                        runOnUiThread(()-> showDialog(this.getString(R.string.unknown_host) + hostName + (isIPV6? this.getString(R.string.no_ipv6): "") ));
                         return;
                     }
 
                 } catch (UnknownHostException e) {
                     Log.e("err", e.toString(),e);
-                    runOnUiThread(()-> showDialog("Unknown Host "+ hostName));
+                    runOnUiThread(()-> showDialog(this.getString(R.string.unknown_host) + hostName));
                     return;
                 }
                 loop:
@@ -119,12 +119,13 @@ public class MainActivity extends AppCompatActivity {
                     switch (process.waitFor()) {
                         case 0:
                             in.readLine();
+                            in.skip(13);
                             String out = in.readLine();
                             Log.i("output", out);
-                            listItems.add(ttl + ") " + out.substring(14).replace(" icmp_seq=1", ""));
+                            listItems.add(ttl + ")" + out.replace(" icmp_seq=1", ""));
                             this.runOnUiThread(()-> {
                                 adapter.notifyDataSetChanged();
-                                Toast.makeText(this, "Trace Completed", Toast.LENGTH_LONG).show();
+                                Toast.makeText(this, R.string.complated, Toast.LENGTH_LONG).show();
                             });
                             in.close();
                             break loop;
@@ -135,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
                             Log.i("output", out2);
                             if (out3.length < 2) {
                                 if (out2.isEmpty()) {
-                                    listItems.add(ttl +  ") Request timed out.");
+                                    listItems.add(ttl + this.getString(R.string.time_out));
                                 } else {
                                     listItems.add(out2);
                                 }
@@ -143,6 +144,9 @@ public class MainActivity extends AppCompatActivity {
                                 listItems.add(ttl + ") " + (isIPV6? out3[1]: out3[1].substring(0, out3[1].length() - 1)));
                             }
                             this.runOnUiThread(adapter::notifyDataSetChanged);
+                            if (ttl == 64) {
+                                this.runOnUiThread(()-> Toast.makeText(this, R.string.unreachable, Toast.LENGTH_LONG).show());
+                            }
                             in.close();
                             break;
                         default:
@@ -167,7 +171,7 @@ public class MainActivity extends AppCompatActivity {
     private void showDialog(String message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage(message)
-                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         dialog.cancel();
                     }
