@@ -6,8 +6,14 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.util.JsonReader;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -27,19 +33,32 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
+import java.net.HttpURLConnection;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+
+import com.example.traceroute.IpAdapter;
+import com.example.traceroute.IpAdapter.IpAddress;
+
+import javax.net.ssl.HttpsURLConnection;
 
 public class MainActivity extends AppCompatActivity {
     private ListView listView;
     private Button button;
     private EditText editText;
     private MaterialSwitch isIpv6Switch;
-    private ArrayAdapter<String> adapter;
-    ArrayList<String> listItems = new ArrayList<>(65);
+    private IpAdapter adapter;
+    private ArrayList<IpAddress> listItems = new ArrayList<>(65);
+
+    private LayoutInflater inflter;
+    private ClipboardManager clipboard;
+
+    private boolean start = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,33 +70,102 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+        inflter = LayoutInflater.from(this);
         button = findViewById(R.id.button);
         listView = findViewById(R.id.listView);
         editText = findViewById(R.id.editTextText);
         isIpv6Switch = findViewById(R.id.switch1);
-        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, listItems);
+        clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        adapter = new IpAdapter(this, listItems);
         listView.setAdapter(adapter);
-        listView.setOnItemLongClickListener((v,v2, a,b)-> {
-            if (v2 instanceof TextView) {
-                String addr = ((TextView)v2).getText().toString();
-                addr = addr.substring(addr.indexOf(')')+2);
-                ClipData clip = ClipData.newPlainText("ip address", addr);
-                clipboard.setPrimaryClip(clip);
-                Toast.makeText(this,R.string.copied, Toast.LENGTH_SHORT).show();
-            }
+        listView.setOnItemLongClickListener(this::onItemLongClick);
+        listView.setOnItemClickListener(this::onItemClick);
+    }
 
+    private void onItemClick(AdapterView<?> var1, View var2, int var3, long var4) {
+        Object tag = var2.getTag();
+        if (tag instanceof IpAddress) {
+            final IpAddress ipAddress = (IpAddress)tag;
+            if (ipAddress.isIpLookupStatus()) {
+                IpAdapter.IpInfo ipInfo = ipAddress.getIpInfo();
+                if (ipInfo == null) {
+                    Toast.makeText(this, "Looking Up IP Info...", Toast.LENGTH_LONG).show();
+
+                    new Thread(()-> {
+                        try {
+                            if (InetAddress.getByName(ipAddress.getAddress()).isSiteLocalAddress()) {
+                                this.runOnUiThread(()->showDialog("This is a private IP address"));
+                                return;
+                            };
+                            HttpURLConnection conn = (HttpURLConnection)new URL("http://ip-api.com/json/"+ipAddress.getAddress()+"?fields=isp,city,org,country,status,regionName").openConnection();
+                            final IpAdapter.IpInfo ipInfo2 = new IpAdapter.IpInfo(new JsonReader(new InputStreamReader(conn.getInputStream())));
+                            ipAddress.setIpInfo(ipInfo2);
+                            this.runOnUiThread(()->showIpInfo(ipInfo2));
+                        } catch (IOException e) {
+                            Log.e("ip lookup", e.toString(), e);
+                            this.runOnUiThread(()->showDialog("Error look up IP"));
+                        } catch (IpAdapter.LookFailException e) {
+                            this.runOnUiThread(()->showDialog("Error look up IP"));
+                            ipAddress.setIpLookupStatus(false);
+                        }
+                    }).start();
+                } else {
+                    showIpInfo(ipInfo);
+                }
+            }
+        }
+    }
+
+    private void showIpInfo(final IpAdapter.IpInfo ipInfo) {
+        View view = inflter.inflate(R.layout.activity_ipinfo, null);
+        ((TextView)view.findViewById(R.id.isp)).setText(ipInfo.getIsp());
+        ((TextView)view.findViewById(R.id.org)).setText(ipInfo.getOrg());
+        ((TextView)view.findViewById(R.id.country)).setText(ipInfo.getCountry());
+        ((TextView)view.findViewById(R.id.region)).setText(ipInfo.getRegionName());
+        ((TextView)view.findViewById(R.id.city)).setText(ipInfo.getCity());
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("IP Information")
+                .setView(view)
+                .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        dialog.cancel();
+                    }
+                });
+        // Create the AlertDialog object and return it.
+        AlertDialog dialog = builder.create();
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT);
+            window.setGravity(Gravity.CENTER);
+        }
+        dialog.show();
+
+
+    }
+    private boolean onItemLongClick(AdapterView<?> var1, View var2, int var3, long var4) {
+        Object tag = var2.getTag();
+        if (tag instanceof IpAddress) {
+            IpAddress ipAddress = (IpAddress)tag;
+            ClipData clip = ClipData.newPlainText("ip address", ipAddress.getAddress());
+            clipboard.setPrimaryClip(clip);
             return  true;
-        });
+        }
+        return false;
     }
     public void onButtonClick(View v) {
+        if (this.start) {
+            this.start = false;
+            return;
+        }
+
         listItems.clear();
         adapter.notifyDataSetChanged();
-        button.setEnabled(false);
-
+        this.start = true;
+        button.setText(R.string.stop);
+        editText.setEnabled(false);
+        isIpv6Switch.setEnabled(false);
 
         boolean isIPV6 = isIpv6Switch.isChecked();
-
         new Thread(() -> {
             String ipAddress = null;
             try {
@@ -109,47 +197,59 @@ public class MainActivity extends AppCompatActivity {
                     runOnUiThread(()-> showDialog(this.getString(R.string.unknown_host) + hostName));
                     return;
                 }
+                long time;
                 loop:
-                for (int ttl = 1; ttl < 65; ++ttl) {
+                for (int ttl = 1; ttl < 65 && start; ++ttl) {
                     Process process = Runtime.getRuntime().exec(new String[]{isIPV6 ? "ping6" : "ping", "-c1", "-t" + ttl, ipAddress});
+
                     StringWriter errSW = new StringWriter();
                     BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()));
                     BufferedReader errIn = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                    errIn.transferTo(errSW);
-                    switch (process.waitFor()) {
-                        case 0:
+                    time = System.currentTimeMillis();
+                    int returnCode = process.waitFor();
+                    time = System.currentTimeMillis() - time;
+                    switch (returnCode) {
+                        case 0: {
                             in.readLine();
-                            in.skip(13);
+                            in.skip(14);
                             String out = in.readLine();
+                            String[] outList = out.split(" ");
+                            IpAddress address = new IpAddress(isIPV6 ? outList[0] : outList[0].substring(0, outList[0].length() - 1), outList[3].substring(5));
                             Log.i("output", out);
-                            listItems.add(ttl + ")" + out.replace(" icmp_seq=1", ""));
-                            this.runOnUiThread(()-> {
+
+                            listItems.add(address);
+                            this.runOnUiThread(() -> {
                                 adapter.notifyDataSetChanged();
                                 Toast.makeText(this, R.string.complated, Toast.LENGTH_LONG).show();
                             });
                             in.close();
                             break loop;
-                        case 1:
+                        }
+                        case 1: {
                             in.readLine();
-                            String out2 = in.readLine();
-                            String[] out3 = out2.split(" ");
-                            Log.i("output", out2);
-                            if (out3.length < 2) {
-                                if (out2.isEmpty()) {
-                                    listItems.add(ttl + this.getString(R.string.time_out));
+                            String out = in.readLine();
+                            String[] outList = out.split(" ");
+
+                            Log.i("output", out);
+                            if (outList.length < 2) {
+                                if (out.isEmpty()) {
+
+                                    listItems.add(null);
                                 } else {
-                                    listItems.add(out2);
+                                    listItems.add(new IpAddress(out, ""));
                                 }
                             } else {
-                                listItems.add(ttl + ") " + (isIPV6? out3[1]: out3[1].substring(0, out3[1].length() - 1)));
+                                listItems.add(new IpAddress(isIPV6 ? outList[1] : outList[1].substring(0, outList[1].length() - 1), Long.toString(time)));
                             }
                             this.runOnUiThread(adapter::notifyDataSetChanged);
                             if (ttl == 64) {
-                                this.runOnUiThread(()-> Toast.makeText(this, R.string.unreachable, Toast.LENGTH_LONG).show());
+                                this.runOnUiThread(() -> Toast.makeText(this, R.string.unreachable, Toast.LENGTH_LONG).show());
                             }
                             in.close();
                             break;
+                        }
                         default:
+                            errIn.transferTo(errSW);
                             in.close();
                             String errSrr = errSW.toString();
                             Log.e("err", errSrr);
@@ -160,10 +260,20 @@ public class MainActivity extends AppCompatActivity {
 
                 }
             } catch (IOException | InterruptedException e) {
-                Log.e("abc", e.toString(), e);
+                Log.e("Exception", e.toString(), e);
                 this.runOnUiThread(()-> showDialog("Exception"));
             } finally {
-                this.runOnUiThread(() -> button.setEnabled(true));
+                if (this.start) {
+                    this.start = false;
+                } else {
+                    this.runOnUiThread(()->Toast.makeText(this,R.string.trace_stop, Toast.LENGTH_LONG).show());
+                }
+                this.runOnUiThread(() -> {
+                    button.setText(R.string.start);
+                    editText.setEnabled(true);
+                    isIpv6Switch.setEnabled(true);
+                });
+
             }
         }).start();
     }
