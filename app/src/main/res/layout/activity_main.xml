@@ -61,8 +61,7 @@
             android:textAlignment="center"
             android:layout_height="wrap_content" />
         <TextView
-            android:text="MS"
-            android:id="@+id/delay"
+            android:text="ms"
             android:layout_width="50dp"
             android:textSize="24sp"
             android:textAlignment="center"
