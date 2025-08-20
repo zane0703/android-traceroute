@@ -89,7 +89,8 @@ public class MainActivity extends AppCompatActivity {
             if (ipAddress.isIpLookupStatus()) {
                 IpAdapter.IpInfo ipInfo = ipAddress.getIpInfo();
                 if (ipInfo == null) {
-                    Toast.makeText(this, "Looking Up IP Info...", Toast.LENGTH_LONG).show();
+                    Toast toast = Toast.makeText(this, "Looking Up IP Info...", Toast.LENGTH_LONG);
+                    toast.show();
 
                     new Thread(()-> {
                         try {
@@ -107,6 +108,8 @@ public class MainActivity extends AppCompatActivity {
                         } catch (IpAdapter.LookFailException e) {
                             this.runOnUiThread(()->showDialog("Error look up IP"));
                             ipAddress.setIpLookupStatus(false);
+                        } finally {
+                            this.runOnUiThread(toast::cancel);
                         }
                     }).start();
                 } else {
@@ -155,6 +158,7 @@ public class MainActivity extends AppCompatActivity {
     public void onButtonClick(View v) {
         if (this.start) {
             this.start = false;
+            Toast.makeText(this, R.string.stopping, Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -278,7 +282,7 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void showDialog(String message) {
+    private void showDialog(CharSequence message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage(message)
                 .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {

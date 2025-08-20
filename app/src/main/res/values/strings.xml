@@ -11,4 +11,12 @@
     <string name="unreachable">Destination Host Unreachable</string>
     <string name="trace_stop">Trace Stoped</string>
     <string name="stop">Stop</string>
+    <string name="stopping">stopping trace…</string>
+    <string name="ISP">ISP</string>
+    <string name="city">City</string>
+    <string name="org">Organisation</string>
+    <string name="country">Country</string>
+    <string name="region">Region</string>
+    <string name="ip_address">IP Address</string>
+    <string name="timing">ms</string>
 </resources>
