@@ -116,7 +116,7 @@ public class IpAdapter extends BaseAdapter {
             this.ipInfo = ipInfo;
         }
     }
-
+    final private String star = "*";
     final private List<IpAddress> ipAddresses;
     final private Context context;
     final private LayoutInflater inflter;
@@ -137,33 +137,32 @@ public class IpAdapter extends BaseAdapter {
 
     @Override
     public Object getItem(int i) {
-        return null;
+        return this.ipAddresses.get(i);
     }
 
     @Override
     public long getItemId(int i) {
         return i;
     }
-
     @Override
-    public View getView(int i, View view, ViewGroup viewGroup) {
+    public boolean hasStableIds(){return true;}
+    @Override
+    public View getView(final int i, View view,final ViewGroup viewGroup) {
         if (view == null) {
-            view = inflter.inflate(R.layout.activity_listview, null);
-            IpAddress ipAddress = this.ipAddresses.get(i);
-
-            view.setTag(ipAddress);
-            TextView countView = view.findViewById(R.id.count);
-            TextView delayView = view.findViewById(R.id.delay);
-            TextView addressView = view.findViewById(R.id.address);
-            countView.setText(Integer.toString(i));
-            if (ipAddress == null) {
-                addressView.setText(R.string.time_out);
-                delayView.setText("*");
-            } else {
-                delayView.setText(ipAddress.getDelay());
-                addressView.setText(ipAddress.getAddress());
-            }
-
+            view = inflter.inflate(R.layout.activity_listview, viewGroup, false);
+        }
+        IpAddress ipAddress = this.ipAddresses.get(i);
+        view.setTag(ipAddress);
+        final TextView countView = view.findViewById(R.id.count);
+        final TextView delayView = view.findViewById(R.id.delay);
+        final TextView addressView = view.findViewById(R.id.address);
+        countView.setText(Integer.toString(i));
+        if (ipAddress == null) {
+            addressView.setText(R.string.time_out);
+            delayView.setText(star);
+        } else {
+            delayView.setText(ipAddress.getDelay());
+            addressView.setText(ipAddress.getAddress());
         }
         return view;
     }

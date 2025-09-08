@@ -76,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
         editText = findViewById(R.id.editTextText);
         isIpv6Switch = findViewById(R.id.switch1);
         clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        adapter = new IpAdapter(this, listItems);
+        adapter = new IpAdapter(this.getBaseContext(), listItems);
         listView.setAdapter(adapter);
         listView.setOnItemLongClickListener(this::onItemLongClick);
         listView.setOnItemClickListener(this::onItemClick);
