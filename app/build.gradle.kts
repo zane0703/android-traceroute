@@ -5,11 +5,13 @@ plugins {
 android {
     namespace = "com.example.traceroute"
     compileSdk = 36
-
+    androidResources {
+        generateLocaleConfig = true
+    }
     defaultConfig {
         applicationId = "com.example.traceroute"
         minSdk = 35
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
