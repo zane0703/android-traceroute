@@ -93,20 +93,10 @@ func Ping(ipAddress string, ttl byte, isIpv6 bool) *Result {
 		return result
 	}
 	outputs := strings.Split(output, " ")
-	if isIpv6 {
-		result.IpAddress = outputs[0]
-	} else {
-		result.IpAddress = outputs[0][:len(outputs[0])-1]
-	}
+	result.IpAddress = outputs[0][:len(outputs[0])-1]
 	fmt.Println(outputs[3])
 	delayStr := outputs[3][5:]
 	result.Delay = strings.TrimSpace(delayStr)
-	if err != nil {
-		Error.Println(err)
-		result.Status = 2
-
-		return result
-	}
 	result.Status = 0
 	return result
 }
