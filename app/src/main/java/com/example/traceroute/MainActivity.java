@@ -42,6 +42,9 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 
+import ping.Ping;
+import ping.Result;
+
 import com.example.traceroute.IpAdapter;
 import com.example.traceroute.IpAdapter.IpAddress;
 
@@ -204,66 +207,37 @@ public class MainActivity extends AppCompatActivity {
                 long time;
                 loop:
                 for (int ttl = 1; ttl < 65 && start; ++ttl) {
-                    Process process = Runtime.getRuntime().exec(new String[]{isIPV6 ? "ping6" : "ping", "-c1", "-t" + ttl, ipAddress});
-
-                    StringWriter errSW = new StringWriter();
-                    BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                    BufferedReader errIn = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                    time = System.currentTimeMillis();
-                    int returnCode = process.waitFor();
-                    time = System.currentTimeMillis() - time;
-                    switch (returnCode) {
+                    Result result = Ping.ping(ipAddress, (byte) ttl, isIPV6);
+                    switch (result.getStatus()) {
                         case 0: {
-                            in.readLine();
-                            in.skip(14);
-                            String out = in.readLine();
-                            String[] outList = out.split(" ");
-                            IpAddress address = new IpAddress(isIPV6 ? outList[0] : outList[0].substring(0, outList[0].length() - 1), outList[3].substring(5));
-                            Log.i("output", out);
-
+                            IpAddress address = new IpAddress(result.getIpAddress(), result.getDelay());
                             listItems.add(address);
                             this.runOnUiThread(() -> {
                                 adapter.notifyDataSetChanged();
                                 Toast.makeText(this, R.string.complated, Toast.LENGTH_LONG).show();
                             });
-                            in.close();
                             break loop;
                         }
                         case 1: {
-                            in.readLine();
-                            String out = in.readLine();
-                            String[] outList = out.split(" ");
-
-                            Log.i("output", out);
-                            if (outList.length < 2) {
-                                if (out.isEmpty()) {
-
-                                    listItems.add(null);
-                                } else {
-                                    listItems.add(new IpAddress(out, ""));
-                                }
-                            } else {
-                                listItems.add(new IpAddress(isIPV6 ? outList[1] : outList[1].substring(0, outList[1].length() - 1), Long.toString(time)));
-                            }
+                            IpAddress address = new IpAddress(result.getIpAddress(), result.getDelay());
+                            listItems.add(address);
                             this.runOnUiThread(adapter::notifyDataSetChanged);
                             if (ttl == 64) {
                                 this.runOnUiThread(() -> Toast.makeText(this, R.string.unreachable, Toast.LENGTH_LONG).show());
                             }
-                            in.close();
                             break;
                         }
+                        case -1:
+                            listItems.add(null);
+                            this.runOnUiThread(adapter::notifyDataSetChanged);
+                            break;
                         default:
-                            errIn.transferTo(errSW);
-                            in.close();
-                            String errSrr = errSW.toString();
-                            Log.e("err", errSrr);
-                            runOnUiThread(() -> showDialog(errSrr));
-
+                            runOnUiThread(() -> showDialog("error"+ result.getStatus()));
                             break loop;
                     }
 
                 }
-            } catch (IOException | InterruptedException e) {
+            } catch (Exception e) {
                 Log.e("Exception", e.toString(), e);
                 this.runOnUiThread(()-> showDialog("Exception"));
             } finally {

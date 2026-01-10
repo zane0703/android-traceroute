@@ -10,8 +10,9 @@ android {
     }
     defaultConfig {
         applicationId = "com.example.traceroute"
-        minSdk = 35
+        minSdk = 36
         targetSdk = 36
+
         versionCode = 1
         versionName = "1.0"
 
@@ -34,7 +35,7 @@ android {
 }
 
 dependencies {
-
+    implementation(files("libs/ping.aar"))
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
