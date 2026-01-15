@@ -8,6 +8,16 @@ android {
     androidResources {
         generateLocaleConfig = true
     }
+    splits {
+        abi {
+            isEnable  = true
+            reset()
+            // Specifies a list of ABIs that Gradle should create APKs for
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            // Optional: generate an additional APK that contains all ABIs
+            isUniversalApk = true
+        }
+    }
     defaultConfig {
         applicationId = "com.example.traceroute"
         minSdk = 36

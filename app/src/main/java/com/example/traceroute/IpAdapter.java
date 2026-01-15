@@ -117,12 +117,12 @@ public class IpAdapter extends BaseAdapter {
         }
     }
     final private String star = "*";
-    final private List<IpAddress> ipAddresses;
+    final private List<ping.Result> ipAddresses;
     final private Context context;
     final private LayoutInflater inflter;
     final private ClipboardManager clipboard;
 
-    public IpAdapter(Context context, List<IpAddress> ipAddresses) {
+    public IpAdapter(Context context, List<ping.Result> ipAddresses) {
         this.context = context;
         this.ipAddresses = ipAddresses;
         this.inflter = LayoutInflater.from(context);
@@ -151,7 +151,7 @@ public class IpAdapter extends BaseAdapter {
         if (view == null) {
             view = inflter.inflate(R.layout.activity_listview, viewGroup, false);
         }
-        IpAddress ipAddress = this.ipAddresses.get(i);
+        ping.Result ipAddress = this.ipAddresses.get(i);
         view.setTag(ipAddress);
         final TextView countView = view.findViewById(R.id.count);
         final TextView delayView = view.findViewById(R.id.delay);
@@ -162,7 +162,7 @@ public class IpAdapter extends BaseAdapter {
             delayView.setText(star);
         } else {
             delayView.setText(ipAddress.getDelay());
-            addressView.setText(ipAddress.getAddress());
+            addressView.setText(ipAddress.getIpAddress());
         }
         return view;
     }

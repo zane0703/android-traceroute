@@ -56,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText editText;
     private MaterialSwitch isIpv6Switch;
     private IpAdapter adapter;
-    private ArrayList<IpAddress> listItems = new ArrayList<>(65);
+    private ArrayList<Result> listItems = new ArrayList<>(65);
 
     private LayoutInflater inflter;
     private ClipboardManager clipboard;
@@ -87,42 +87,31 @@ public class MainActivity extends AppCompatActivity {
 
     private void onItemClick(AdapterView<?> var1, View var2, int var3, long var4) {
         Object tag = var2.getTag();
-        if (tag instanceof IpAddress) {
-            final IpAddress ipAddress = (IpAddress)tag;
-            if (ipAddress.isIpLookupStatus()) {
-                IpAdapter.IpInfo ipInfo = ipAddress.getIpInfo();
-                if (ipInfo == null) {
-                    Toast toast = Toast.makeText(this, "Looking Up IP Info...", Toast.LENGTH_LONG);
-                    toast.show();
-
+        if (tag instanceof Result) {
+            final Result ipAddress = (Result)tag;
+            if (ipAddress.getIpLookupStatus()) {
+                Toast toast = Toast.makeText(this, "Looking Up IP Info...", Toast.LENGTH_LONG);
+                toast.show();
                     new Thread(()-> {
                         try {
-                            if (InetAddress.getByName(ipAddress.getAddress()).isSiteLocalAddress()) {
+                            if (InetAddress.getByName(ipAddress.getIpAddress()).isSiteLocalAddress()) {
                                 this.runOnUiThread(()->showDialog("This is a private IP address"));
                                 return;
                             };
-                            HttpURLConnection conn = (HttpURLConnection)new URL("http://ip-api.com/json/"+ipAddress.getAddress()+"?fields=isp,city,org,country,status,regionName").openConnection();
-                            final IpAdapter.IpInfo ipInfo2 = new IpAdapter.IpInfo(new JsonReader(new InputStreamReader(conn.getInputStream())));
-                            ipAddress.setIpInfo(ipInfo2);
-                            this.runOnUiThread(()->showIpInfo(ipInfo2));
-                        } catch (IOException e) {
-                            Log.e("ip lookup", e.toString(), e);
+                            ping.IpInfo ipInfo = ipAddress.lookupIpInfo(false);
+                            this.runOnUiThread(()->showIpInfo(ipInfo));
+                        } catch (Exception e) {
                             this.runOnUiThread(()->showDialog("Error look up IP"));
-                        } catch (IpAdapter.LookFailException e) {
-                            this.runOnUiThread(()->showDialog("Error look up IP"));
-                            ipAddress.setIpLookupStatus(false);
+                            //ipAddress.setIpLookupStatus(false);
                         } finally {
                             this.runOnUiThread(toast::cancel);
                         }
                     }).start();
-                } else {
-                    showIpInfo(ipInfo);
-                }
             }
         }
     }
 
-    private void showIpInfo(final IpAdapter.IpInfo ipInfo) {
+    private void showIpInfo(final ping.IpInfo ipInfo) {
         View view = inflter.inflate(R.layout.activity_ipinfo, null);
         ((TextView)view.findViewById(R.id.isp)).setText(ipInfo.getIsp());
         ((TextView)view.findViewById(R.id.org)).setText(ipInfo.getOrg());
@@ -210,8 +199,8 @@ public class MainActivity extends AppCompatActivity {
                     Result result = Ping.ping(ipAddress, (byte) ttl, isIPV6);
                     switch (result.getStatus()) {
                         case 0: {
-                            IpAddress address = new IpAddress(result.getIpAddress(), result.getDelay());
-                            listItems.add(address);
+                            //IpAddress address = new IpAddress(result.getIpAddress(), result.getDelay());
+                            listItems.add(result);
                             this.runOnUiThread(() -> {
                                 adapter.notifyDataSetChanged();
                                 Toast.makeText(this, R.string.complated, Toast.LENGTH_LONG).show();
@@ -219,8 +208,8 @@ public class MainActivity extends AppCompatActivity {
                             break loop;
                         }
                         case 1: {
-                            IpAddress address = new IpAddress(result.getIpAddress(), result.getDelay());
-                            listItems.add(address);
+                            //IpAddress address = new IpAddress(result.getIpAddress(), result.getDelay());
+                            listItems.add(result);
                             this.runOnUiThread(adapter::notifyDataSetChanged);
                             if (ttl == 64) {
                                 this.runOnUiThread(() -> Toast.makeText(this, R.string.unreachable, Toast.LENGTH_LONG).show());
@@ -232,14 +221,14 @@ public class MainActivity extends AppCompatActivity {
                             this.runOnUiThread(adapter::notifyDataSetChanged);
                             break;
                         default:
-                            runOnUiThread(() -> showDialog("error"+ result.getStatus()));
+                            runOnUiThread(() -> showDialog("error "+ result.getStatus()));
                             break loop;
                     }
 
                 }
             } catch (Exception e) {
                 Log.e("Exception", e.toString(), e);
-                this.runOnUiThread(()-> showDialog("Exception"));
+                this.runOnUiThread(()-> showDialog(e.toString()));
             } finally {
                 if (this.start) {
                     this.start = false;

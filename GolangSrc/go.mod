@@ -1,4 +1,4 @@
-module ping
+module github.com/zane0703/android-traceroute
 
 go 1.24.5
 
