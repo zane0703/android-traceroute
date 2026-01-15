@@ -14,7 +14,6 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
@@ -29,26 +28,15 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.StringWriter;
-import java.net.HttpURLConnection;
+
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 
 import ping.Ping;
 import ping.Result;
-
-import com.example.traceroute.IpAdapter;
-import com.example.traceroute.IpAdapter.IpAddress;
-
-import javax.net.ssl.HttpsURLConnection;
 
 public class MainActivity extends AppCompatActivity {
     private ListView listView;
@@ -139,9 +127,9 @@ public class MainActivity extends AppCompatActivity {
     }
     private boolean onItemLongClick(AdapterView<?> var1, View var2, int var3, long var4) {
         Object tag = var2.getTag();
-        if (tag instanceof IpAddress) {
-            IpAddress ipAddress = (IpAddress)tag;
-            ClipData clip = ClipData.newPlainText("ip address", ipAddress.getAddress());
+        if (tag instanceof ping.Result) {
+            ping.Result ipAddress = (ping.Result)tag;
+            ClipData clip = ClipData.newPlainText("ip address", ipAddress.getIpAddress());
             clipboard.setPrimaryClip(clip);
             return  true;
         }
