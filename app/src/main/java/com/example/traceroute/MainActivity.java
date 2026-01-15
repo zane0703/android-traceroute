@@ -6,7 +6,6 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
-import android.util.JsonReader;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -22,6 +21,7 @@ import android.widget.Toast;
 import  com.google.android.material.materialswitch.MaterialSwitch;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
@@ -78,18 +78,18 @@ public class MainActivity extends AppCompatActivity {
         if (tag instanceof Result) {
             final Result ipAddress = (Result)tag;
             if (ipAddress.getIpLookupStatus()) {
-                Toast toast = Toast.makeText(this, "Looking Up IP Info...", Toast.LENGTH_LONG);
+                Toast toast = Toast.makeText(this, R.string.ip_lookup, Toast.LENGTH_LONG);
                 toast.show();
                     new Thread(()-> {
                         try {
                             if (InetAddress.getByName(ipAddress.getIpAddress()).isSiteLocalAddress()) {
-                                this.runOnUiThread(()->showDialog("This is a private IP address"));
+                                this.runOnUiThread(()-> showDialogBox(R.string.private_IP));
                                 return;
                             };
                             ping.IpInfo ipInfo = ipAddress.lookupIpInfo(false);
                             this.runOnUiThread(()->showIpInfo(ipInfo));
                         } catch (Exception e) {
-                            this.runOnUiThread(()->showDialog("Error look up IP"));
+                            this.runOnUiThread(()-> showDialogBox(R.string.ip_lookup_error));
                             //ipAddress.setIpLookupStatus(false);
                         } finally {
                             this.runOnUiThread(toast::cancel);
@@ -107,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
         ((TextView)view.findViewById(R.id.region)).setText(ipInfo.getRegionName());
         ((TextView)view.findViewById(R.id.city)).setText(ipInfo.getCity());
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("IP Information")
+        builder.setTitle(R.string.ip_info_title)
                 .setView(view)
                 .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
@@ -172,16 +172,15 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                     if (ipAddress == null) {
-                        runOnUiThread(()-> showDialog(this.getString(R.string.unknown_host) + hostName + (isIPV6? this.getString(R.string.no_ipv6): "") ));
+                        runOnUiThread(()-> showDialogBox(this.getString(R.string.unknown_host) + hostName + (isIPV6? this.getString(R.string.no_ipv6): "") ));
                         return;
                     }
 
                 } catch (UnknownHostException e) {
                     Log.e("err", e.toString(),e);
-                    runOnUiThread(()-> showDialog(this.getString(R.string.unknown_host) + hostName));
+                    runOnUiThread(()-> showDialogBox(this.getString(R.string.unknown_host) + hostName));
                     return;
                 }
-                long time;
                 loop:
                 for (int ttl = 1; ttl < 65 && start; ++ttl) {
                     Result result = Ping.ping(ipAddress, (byte) ttl, isIPV6);
@@ -209,14 +208,14 @@ public class MainActivity extends AppCompatActivity {
                             this.runOnUiThread(adapter::notifyDataSetChanged);
                             break;
                         default:
-                            runOnUiThread(() -> showDialog("error "+ result.getStatus()));
+                            runOnUiThread(() -> showDialogBox("error "+ result.getStatus()));
                             break loop;
                     }
 
                 }
             } catch (Exception e) {
                 Log.e("Exception", e.toString(), e);
-                this.runOnUiThread(()-> showDialog(e.toString()));
+                this.runOnUiThread(()-> showDialogBox(e.toString()));
             } finally {
                 if (this.start) {
                     this.start = false;
@@ -233,9 +232,20 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void showDialog(CharSequence message) {
+    private void showDialogBox(CharSequence message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage(message)
+                .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        dialog.cancel();
+                    }
+                });
+        // Create the AlertDialog object and return it.
+        builder.create().show();
+    }
+    private void showDialogBox(@StringRes int messageId) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage(messageId)
                 .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         dialog.cancel();

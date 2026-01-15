@@ -20,4 +20,8 @@
     <string name="region">区域</string>
     <string name="ip_address">IP地址</string>
     <string name="timing">ms</string>
+    <string name="ip_info_title">IP 地址资料</string>
+    <string name="private_IP">这是一个私有 IP 地址</string>
+    <string name="ip_lookup">正在查找 IP 地址资料...</string>
+    <string name="ip_lookup_error">查找 IP 地址时出错</string>
 </resources>
