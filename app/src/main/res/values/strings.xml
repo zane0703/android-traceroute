@@ -3,13 +3,13 @@
     <string name="ok">OK</string>
     <string name="start">Start</string>
     <string name="complated">Trace Completed</string>
-    <string name="ipv6">IPV6</string>
+    <string name="ipv6">IPv6</string>
     <string name="copied">Copied</string>
     <string name="time_out">Request timed out.</string>
-    <string name="unknown_host">unknown Host&#160;</string>
-    <string name="no_ipv6"><br/>&#160;or no IPV6 address available</string>
+    <string name="unknown_host">Unknown Host&#160;</string>
+    <string name="no_ipv6"><br/>&#160;or no IPv6 address available.</string>
     <string name="unreachable">Destination Host Unreachable</string>
-    <string name="trace_stop">Trace Stoped</string>
+    <string name="trace_stop">Trace Stopped</string>
     <string name="stop">Stop</string>
     <string name="stopping">stopping trace…</string>
     <string name="ISP">ISP</string>
@@ -21,6 +21,6 @@
     <string name="timing">ms</string>
     <string name="ip_info_title">IP Information</string>
     <string name="private_IP">This is a private IP address</string>
-    <string name="ip_lookup">Looking Up IP address Info...</string>
+    <string name="ip_lookup">Looking Up IP address Info…</string>
     <string name="ip_lookup_error">Error looking up IP address</string>
 </resources>

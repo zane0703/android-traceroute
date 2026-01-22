@@ -68,6 +68,7 @@ public class MainActivity extends AppCompatActivity {
         isIpv6Switch = findViewById(R.id.switch1);
         clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         adapter = new IpAdapter(this.getBaseContext(), listItems);
+
         listView.setAdapter(adapter);
         listView.setOnItemLongClickListener(this::onItemLongClick);
         listView.setOnItemClickListener(this::onItemClick);
@@ -109,11 +110,7 @@ public class MainActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(R.string.ip_info_title)
                 .setView(view)
-                .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        dialog.cancel();
-                    }
-                });
+                .setPositiveButton(R.string.ok, this::closeDialog);
         // Create the AlertDialog object and return it.
         AlertDialog dialog = builder.create();
         Window window = dialog.getWindow();
@@ -235,23 +232,19 @@ public class MainActivity extends AppCompatActivity {
     private void showDialogBox(CharSequence message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage(message)
-                .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        dialog.cancel();
-                    }
-                });
+                .setPositiveButton(R.string.ok, this::closeDialog);
         // Create the AlertDialog object and return it.
         builder.create().show();
     }
     private void showDialogBox(@StringRes int messageId) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage(messageId)
-                .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        dialog.cancel();
-                    }
-                });
+                .setPositiveButton(R.string.ok, this::closeDialog);
         // Create the AlertDialog object and return it.
         builder.create().show();
     }
+    private void closeDialog(DialogInterface dialog, int id) {
+        dialog.cancel();
+    }
+
 }
