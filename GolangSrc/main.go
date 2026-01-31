@@ -1,12 +1,13 @@
-package ping
+package nettools
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -17,11 +18,16 @@ import (
 var logger = log.New(os.Stderr, "\u001b[31mERROR: \u001b[0m", log.LstdFlags|log.Lshortfile)
 
 type (
-	Result struct {
+	Tracetool struct {
+		start              bool
+		pingResultCallback PingResultCallback
+		onErrorCallback    OnErrorCallback
+	}
+	PingResult struct {
 		IpLookupStatus bool
 		IpAddress      string
 		Delay          string
-		Status         int32
+		Complated      bool
 		IpInfo         *IpInfo
 	}
 	IpInfo struct {
@@ -32,46 +38,91 @@ type (
 		Org        string `json:"org"`
 		Status     string `json:"status"`
 	}
+	readerOutput struct {
+		Out   string
+		delay int64
+		err   error
+	}
+	PingResultCallback interface {
+		Run(result *PingResult)
+	}
+
+	IpLookUpResultCallback interface {
+		Run(result *IpInfo)
+	}
+	OnErrorCallback interface {
+		Run(err error)
+	}
+	OnTraceStopped interface {
+		Run(intercepted bool)
+	}
 	//isp,city,org,country,status,regionName
 )
 
 var command = map[bool]string{true: "/system/bin/ping6", false: "/system/bin/ping"}
+var ipLens = map[bool]int{true: net.IPv6len, false: net.IPv4len}
 
-func Ping(ipAddress string, ttl byte, isIpv6 bool) (*Result, error) {
-	result := &Result{IpLookupStatus: true}
-	buf := new(bytes.Buffer)
-	cmd := exec.Command(command[isIpv6], "-c1", fmt.Sprintf("-t%d", ttl), ipAddress)
-	cmd.Stdout = buf
-	/* stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		result.Status = 2
-		return result
-	} */
-	reader := bufio.NewReader(buf)
+func NewTracetool(pingResultCallback PingResultCallback, onErrorCallback OnErrorCallback) *Tracetool {
+	return &Tracetool{pingResultCallback: pingResultCallback, onErrorCallback: onErrorCallback}
+}
+
+func readOutput(reader io.Reader, out chan *readerOutput) {
+	scanner := bufio.NewReader(reader)
 	start := time.Now()
-	err := cmd.Run()
+	_, err := scanner.ReadString('a')
+	if err != nil {
+		out <- &readerOutput{err: err}
+		return
+	}
+	_, err = scanner.ReadString('\n')
 	delayNano := time.Since(start).Nanoseconds()
-	delayMilli := float64(delayNano) / float64(time.Millisecond.Nanoseconds())
-	result.Delay = fmt.Sprintf("%.1f", delayMilli)
+	if err != nil {
+		out <- &readerOutput{err: err}
+		return
+	}
+	outStr, err := scanner.ReadString('\n')
+
+	if err != nil {
+		out <- &readerOutput{err: err}
+		return
+	}
+	out <- &readerOutput{Out: outStr, delay: delayNano}
+}
+
+func Ping(ipAddress string, ttl byte, isIpv6 bool) (*PingResult, error) {
+	var result *PingResult
+	cmd := exec.Command(command[isIpv6], "-c1", fmt.Sprintf("-t%d", ttl), ipAddress)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	readerOutputChan := make(chan *readerOutput, 1)
+	go readOutput(stdout, readerOutputChan)
+	err = cmd.Run()
+
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			result.Status = int32(exitErr.ExitCode())
-			if result.Status == 1 {
-				_, err := reader.ReadString('\n')
-				if err != nil {
+			switch exitErr.ExitCode() {
+			case 1:
+				readerOut := <-readerOutputChan
+				close(readerOutputChan)
+				if readerOut.err != nil {
 					logger.Println(err)
-					return nil, err
+					return nil, readerOut.err
 				}
-				output, err := reader.ReadString('\n')
-				if err != nil {
-					logger.Println(err)
-					return nil, err
-				}
-				outputs := strings.Split(output, " ")
+				outputs := strings.Split(readerOut.Out, " ")
 				if len(outputs) < 2 {
 					logger.Println("output less then 2 line")
-					result.Status = -1
-					return result, nil
+					return nil, nil
+				}
+				result = &PingResult{IpLookupStatus: true, Complated: false}
+				delayMilli := float64(readerOut.delay) / float64(time.Millisecond.Nanoseconds())
+				if delayMilli < 10 {
+					result.Delay = fmt.Sprintf("%.2f", delayMilli)
+				} else if delayMilli < 100 {
+					result.Delay = fmt.Sprintf("%.1f", delayMilli)
+				} else {
+					result.Delay = fmt.Sprintf("%.0f", delayMilli)
 				}
 				if isIpv6 {
 					result.IpAddress = outputs[1]
@@ -79,55 +130,110 @@ func Ping(ipAddress string, ttl byte, isIpv6 bool) (*Result, error) {
 					result.IpAddress = outputs[1][:len(outputs[1])-1]
 				}
 				return result, nil
+			case 2:
+				if isIpv6 {
+					return nil, errors.New("noNet6")
+				} else {
+					return nil, errors.New("noNet")
+				}
 			}
 		}
 		logger.Println(err)
+		close(readerOutputChan)
 		return nil, err
 	}
-	_, err = reader.ReadString('\n')
-	if err != nil {
+	readerOut := <-readerOutputChan
+	close(readerOutputChan)
+	if readerOut.err != nil {
 		logger.Println(err)
-		return nil, err
+		return nil, readerOut.err
 	}
-	if _, err = reader.Discard(14); err != nil {
-		logger.Println(err)
-		return nil, err
-	}
-	output, err := reader.ReadString('\n')
-	if err != nil {
-		logger.Println(err)
-		return nil, err
-	}
-	outputs := strings.Split(output, " ")
+	result = &PingResult{IpLookupStatus: true, Complated: true}
+	outputs := strings.Split(readerOut.Out[14:], " ")
 	result.IpAddress = outputs[0][:len(outputs[0])-1]
-	fmt.Println(outputs[3])
 	delayStr := outputs[3][5:]
 	result.Delay = strings.TrimSpace(delayStr)
-	result.Status = 0
 	return result, nil
 }
 
-func (r *Result) LookupIpInfo(isForce bool) (*IpInfo, error) {
-	if !isForce && r.IpInfo != nil {
-		return r.IpInfo, nil
+func (t *Tracetool) Stop() {
+	t.start = false
+}
+
+func (t *Tracetool) TracertRoute(hostname string, isIpv6 bool) {
+	go t.tracertRoute(hostname, isIpv6)
+}
+
+func (t *Tracetool) tracertRoute(hostname string, isIpv6 bool) {
+	t.start = true
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		log.Println("Could not get IPs for ", hostname, err)
+		t.onErrorCallback.Run(err)
+		return
 	}
+	ipAddress := ""
+	ipLen := ipLens[isIpv6]
+	for _, ip := range ips {
+		if len(ip) == ipLen {
+			ipAddress = ip.String()
+			break
+		}
+	}
+	if ipAddress == "" {
+		if isIpv6 {
+			t.onErrorCallback.Run(errors.New("noIPv6"))
+		} else {
+			t.onErrorCallback.Run(errors.New("noIPv4"))
+		}
+		return
+	}
+	for i := 1; (i < 65) && t.start; i++ {
+		ttl := byte(i)
+		result, err := Ping(ipAddress, ttl, isIpv6)
+		if err != nil {
+			t.onErrorCallback.Run(err)
+			return
+		}
+		t.pingResultCallback.Run(result)
+		if result != nil && result.Complated {
+			return
+		}
+
+	}
+	if t.start {
+		t.onErrorCallback.Run(errors.New("unreachable"))
+	} else {
+		t.onErrorCallback.Run(errors.New("stoped"))
+	}
+
+}
+func (r *PingResult) LookupIpInfo(isForce bool, cb IpLookUpResultCallback, ecb OnErrorCallback) {
+	if !isForce && r.IpInfo != nil {
+		cb.Run(r.IpInfo)
+		return
+	}
+	go r.lookupIpInfo(cb, ecb)
+}
+func (r *PingResult) lookupIpInfo(cb IpLookUpResultCallback, ecb OnErrorCallback) {
 	res, err := http.Get(fmt.Sprintf("http://ip-api.com/json/%s?fields=isp,city,org,country,status,regionName", r.IpAddress))
 	if err != nil {
 		logger.Println(err)
-		return nil, err
+		ecb.Run(err)
+		return
 	}
 	info := &IpInfo{}
 	decoder := json.NewDecoder(res.Body)
 	if err := decoder.Decode(info); err != nil {
-		logger.Println(err)
-		return nil, err
+		ecb.Run(err)
+		return
 	}
 	if info.Status != "success" {
 		r.IpLookupStatus = false
 		err = errors.New("Error look up IP")
-		logger.Println(err)
-		return nil, err
+		ecb.Run(err)
+		return
 	}
 	r.IpInfo = info
-	return info, nil
+	cb.Run(info)
 }

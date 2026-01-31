@@ -1,6 +1,5 @@
 package com.example.traceroute;
 
-import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -8,23 +7,20 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 
-import org.json.JSONObject;
 
-import android.util.JsonReader;
 import android.widget.TextView;
 
-import java.io.IOException;
 import java.util.List;
-
+import nettools.PingResult;
 public class IpAdapter extends BaseAdapter {
 
     final private String star = "*";
-    final private List<ping.Result> ipAddresses;
+    final private List<PingResult> ipAddresses;
     final private Context context;
     final private LayoutInflater inflter;
     final private ClipboardManager clipboard;
 
-    public IpAdapter(Context context, List<ping.Result> ipAddresses) {
+    public IpAdapter(Context context, List<PingResult> ipAddresses) {
         this.context = context;
         this.ipAddresses = ipAddresses;
         this.inflter = LayoutInflater.from(context);
@@ -53,7 +49,7 @@ public class IpAdapter extends BaseAdapter {
         if (view == null) {
             view = inflter.inflate(R.layout.activity_listview, viewGroup, false);
         }
-        ping.Result ipAddress = this.ipAddresses.get(i);
+        PingResult ipAddress = this.ipAddresses.get(i);
         view.setTag(ipAddress);
         final TextView countView = view.findViewById(R.id.count);
         final TextView delayView = view.findViewById(R.id.delay);

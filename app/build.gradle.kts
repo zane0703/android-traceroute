@@ -45,7 +45,7 @@ android {
 }
 
 dependencies {
-    implementation(files("libs/ping.aar"))
+    implementation(files("libs/nettools.aar"))
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)

@@ -24,4 +24,6 @@
     <string name="private_IP">这是一个私有 IP 地址</string>
     <string name="ip_lookup">正在查找 IP 地址资料…</string>
     <string name="ip_lookup_error">查找 IP 地址时出错</string>
+    <string name="no_net">网络无法连接</string>
+    <string name="no_net6">网络无法连接或网络不支持 IPv6</string>
 </resources>

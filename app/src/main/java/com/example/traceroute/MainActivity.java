@@ -18,7 +18,8 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
-import  com.google.android.material.materialswitch.MaterialSwitch;
+
+import com.google.android.material.materialswitch.MaterialSwitch;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.StringRes;
@@ -29,14 +30,11 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 
-import java.net.Inet4Address;
-import java.net.Inet6Address;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 
-import ping.Ping;
-import ping.Result;
+import nettools.PingResult;
+import nettools.Tracetool;
 
 public class MainActivity extends AppCompatActivity {
     private ListView listView;
@@ -44,12 +42,15 @@ public class MainActivity extends AppCompatActivity {
     private EditText editText;
     private MaterialSwitch isIpv6Switch;
     private IpAdapter adapter;
-    private ArrayList<Result> listItems = new ArrayList<>(65);
+    private ArrayList<PingResult> listItems = new ArrayList<>(65);
 
     private LayoutInflater inflter;
     private ClipboardManager clipboard;
 
+    private View mProgressBarFooter;
+
     private boolean start = false;
+    private Tracetool tracetool = new Tracetool(this::PingResultCallback, this::onErrorCallback);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
         isIpv6Switch = findViewById(R.id.switch1);
         clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         adapter = new IpAdapter(this.getBaseContext(), listItems);
-
+        mProgressBarFooter = inflter.inflate(R.layout.progress_bar_footer, null, false);
         listView.setAdapter(adapter);
         listView.setOnItemLongClickListener(this::onItemLongClick);
         listView.setOnItemClickListener(this::onItemClick);
@@ -76,37 +77,42 @@ public class MainActivity extends AppCompatActivity {
 
     private void onItemClick(AdapterView<?> var1, View var2, int var3, long var4) {
         Object tag = var2.getTag();
-        if (tag instanceof Result) {
-            final Result ipAddress = (Result)tag;
+        if (tag instanceof PingResult) {
+            final PingResult ipAddress = (PingResult) tag;
             if (ipAddress.getIpLookupStatus()) {
                 Toast toast = Toast.makeText(this, R.string.ip_lookup, Toast.LENGTH_LONG);
                 toast.show();
-                    new Thread(()-> {
-                        try {
-                            if (InetAddress.getByName(ipAddress.getIpAddress()).isSiteLocalAddress()) {
-                                this.runOnUiThread(()-> showDialogBox(R.string.private_IP));
-                                return;
-                            };
-                            ping.IpInfo ipInfo = ipAddress.lookupIpInfo(false);
-                            this.runOnUiThread(()->showIpInfo(ipInfo));
-                        } catch (Exception e) {
-                            this.runOnUiThread(()-> showDialogBox(R.string.ip_lookup_error));
-                            //ipAddress.setIpLookupStatus(false);
-                        } finally {
-                            this.runOnUiThread(toast::cancel);
-                        }
-                    }).start();
+                try {
+                    if (InetAddress.getByName(ipAddress.getIpAddress()).isSiteLocalAddress()) {
+                        this.runOnUiThread(()-> showDialogBox(R.string.private_IP));
+                        toast.cancel();
+                        return;
+                    }
+                    ipAddress.lookupIpInfo(false, ipInfo -> this.runOnUiThread(() -> {
+                        showIpInfo(ipInfo);
+                        toast.cancel();
+                    }), err -> this.runOnUiThread(() -> {
+                        showDialogBox(R.string.ip_lookup_error);
+                        toast.cancel();
+                    }));
+
+                } catch (Exception e) {
+                    this.runOnUiThread(() -> {
+                        showDialogBox(R.string.ip_lookup_error);
+                        toast.cancel();
+                    });
+                    //ipAddress.setIpLookupStatus(false);
+                }
             }
         }
     }
-
-    private void showIpInfo(final ping.IpInfo ipInfo) {
+    private void showIpInfo(final nettools.IpInfo ipInfo) {
         View view = inflter.inflate(R.layout.activity_ipinfo, null);
-        ((TextView)view.findViewById(R.id.isp)).setText(ipInfo.getIsp());
-        ((TextView)view.findViewById(R.id.org)).setText(ipInfo.getOrg());
-        ((TextView)view.findViewById(R.id.country)).setText(ipInfo.getCountry());
-        ((TextView)view.findViewById(R.id.region)).setText(ipInfo.getRegionName());
-        ((TextView)view.findViewById(R.id.city)).setText(ipInfo.getCity());
+        ((TextView) view.findViewById(R.id.isp)).setText(ipInfo.getIsp());
+        ((TextView) view.findViewById(R.id.org)).setText(ipInfo.getOrg());
+        ((TextView) view.findViewById(R.id.country)).setText(ipInfo.getCountry());
+        ((TextView) view.findViewById(R.id.region)).setText(ipInfo.getRegionName());
+        ((TextView) view.findViewById(R.id.city)).setText(ipInfo.getCity());
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(R.string.ip_info_title)
                 .setView(view)
@@ -122,111 +128,94 @@ public class MainActivity extends AppCompatActivity {
 
 
     }
+
     private boolean onItemLongClick(AdapterView<?> var1, View var2, int var3, long var4) {
         Object tag = var2.getTag();
-        if (tag instanceof ping.Result) {
-            ping.Result ipAddress = (ping.Result)tag;
+        if (tag instanceof PingResult) {
+            PingResult ipAddress = (PingResult) tag;
             ClipData clip = ClipData.newPlainText("ip address", ipAddress.getIpAddress());
             clipboard.setPrimaryClip(clip);
-            return  true;
+            return true;
         }
         return false;
     }
+
     public void onButtonClick(View v) {
         if (this.start) {
             this.start = false;
             Toast.makeText(this, R.string.stopping, Toast.LENGTH_LONG).show();
+            tracetool.stop();
             return;
         }
 
         listItems.clear();
         adapter.notifyDataSetChanged();
         this.start = true;
+        listView.addFooterView(mProgressBarFooter);
         button.setText(R.string.stop);
         editText.setEnabled(false);
         isIpv6Switch.setEnabled(false);
 
         boolean isIPV6 = isIpv6Switch.isChecked();
-        new Thread(() -> {
-            String ipAddress = null;
-            try {
-                String hostName =editText.getText().toString().trim();
-                try {
+        String hostName = editText.getText().toString().trim();
+        tracetool.tracertRoute(hostName, isIPV6);
+    }
 
-                    InetAddress[] inetAddresses =  InetAddress.getAllByName(hostName);
+    private void PingResultCallback(PingResult result) {
+        listItems.add(result);
+        this.runOnUiThread(adapter::notifyDataSetChanged);
+        if (result != null && result.getComplated()) {
+            this.runOnUiThread(() -> {
+                Toast.makeText(this, R.string.complated, Toast.LENGTH_LONG).show();
+                onTraceStopped();
+            });
+        }
+    }
 
-                    for (InetAddress inetAddress: inetAddresses) {
-                        if (isIPV6) {
-                            if (inetAddress instanceof  Inet6Address) {
-                                ipAddress = inetAddress.getHostAddress();
-                                break;
-                            }
-                        } else {
-                            if (inetAddress instanceof  Inet4Address) {
-                                ipAddress = inetAddress.getHostAddress();
-                                break;
-                            }
-                        }
-                    }
-                    if (ipAddress == null) {
-                        runOnUiThread(()-> showDialogBox(this.getString(R.string.unknown_host) + hostName + (isIPV6? this.getString(R.string.no_ipv6): "") ));
-                        return;
-                    }
-
-                } catch (UnknownHostException e) {
-                    Log.e("err", e.toString(),e);
-                    runOnUiThread(()-> showDialogBox(this.getString(R.string.unknown_host) + hostName));
-                    return;
-                }
-                loop:
-                for (int ttl = 1; ttl < 65 && start; ++ttl) {
-                    Result result = Ping.ping(ipAddress, (byte) ttl, isIPV6);
-                    switch (result.getStatus()) {
-                        case 0: {
-                            //IpAddress address = new IpAddress(result.getIpAddress(), result.getDelay());
-                            listItems.add(result);
-                            this.runOnUiThread(() -> {
-                                adapter.notifyDataSetChanged();
-                                Toast.makeText(this, R.string.complated, Toast.LENGTH_LONG).show();
-                            });
-                            break loop;
-                        }
-                        case 1: {
-                            //IpAddress address = new IpAddress(result.getIpAddress(), result.getDelay());
-                            listItems.add(result);
-                            this.runOnUiThread(adapter::notifyDataSetChanged);
-                            if (ttl == 64) {
-                                this.runOnUiThread(() -> Toast.makeText(this, R.string.unreachable, Toast.LENGTH_LONG).show());
-                            }
-                            break;
-                        }
-                        case -1:
-                            listItems.add(null);
-                            this.runOnUiThread(adapter::notifyDataSetChanged);
-                            break;
-                        default:
-                            runOnUiThread(() -> showDialogBox("error "+ result.getStatus()));
-                            break loop;
-                    }
-
-                }
-            } catch (Exception e) {
-                Log.e("Exception", e.toString(), e);
-                this.runOnUiThread(()-> showDialogBox(e.toString()));
-            } finally {
-                if (this.start) {
-                    this.start = false;
-                } else {
-                    this.runOnUiThread(()->Toast.makeText(this,R.string.trace_stop, Toast.LENGTH_LONG).show());
-                }
-                this.runOnUiThread(() -> {
-                    button.setText(R.string.start);
-                    editText.setEnabled(true);
-                    isIpv6Switch.setEnabled(true);
-                });
-
+    private void onErrorCallback(Exception e) {
+        String errMsg = e.getMessage();
+        if (errMsg != null) {
+            switch (errMsg) {
+                case "unreachable":
+                    this.runOnUiThread(() -> Toast.makeText(this, R.string.unreachable, Toast.LENGTH_LONG).show());
+                    break;
+                case "stoped":
+                    this.runOnUiThread(() -> Toast.makeText(this, R.string.trace_stop, Toast.LENGTH_LONG).show());
+                    break;
+                case "noIPv6":
+                    this.runOnUiThread(() -> showDialogBox(this.getString(R.string.unknown_host) + this.editText.getText() + this.getString(R.string.no_ipv6)));
+                    break;
+                case "noIPv4":
+                    this.runOnUiThread(() -> showDialogBox(this.getString(R.string.unknown_host) + this.editText.getText()));
+                    break;
+                case "noNet6":
+                    this.runOnUiThread(() -> showDialogBox(R.string.no_net6));
+                    break;
+                case "noNet":
+                    this.runOnUiThread(() -> showDialogBox(R.string.no_net));
+                    break;
+                default:
+                    Log.e("Exception", e.toString(), e);
+                    this.runOnUiThread(() -> showDialogBox(errMsg));
+                    break;
             }
-        }).start();
+            this.runOnUiThread(this::onTraceStopped);
+            return;
+
+        }
+        Log.e("Exception", e.toString(), e);
+        this.runOnUiThread(() -> {
+            showDialogBox(e.toString());
+            this.onTraceStopped();
+        });
+    }
+
+    private void onTraceStopped() {
+        button.setText(R.string.start);
+        editText.setEnabled(true);
+        isIpv6Switch.setEnabled(true);
+        this.start = false;
+        listView.removeFooterView(mProgressBarFooter);
     }
 
     private void showDialogBox(CharSequence message) {
@@ -236,6 +225,7 @@ public class MainActivity extends AppCompatActivity {
         // Create the AlertDialog object and return it.
         builder.create().show();
     }
+
     private void showDialogBox(@StringRes int messageId) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage(messageId)
@@ -243,6 +233,7 @@ public class MainActivity extends AppCompatActivity {
         // Create the AlertDialog object and return it.
         builder.create().show();
     }
+
     private void closeDialog(DialogInterface dialog, int id) {
         dialog.cancel();
     }

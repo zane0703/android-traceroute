@@ -17,10 +17,12 @@
     <string name="org">Organisation</string>
     <string name="country">Country</string>
     <string name="region">Region</string>
-    <string name="ip_address">IP Address</string>
+    <string name="ip_address">IP Address</string>w
     <string name="timing">ms</string>
     <string name="ip_info_title">IP Information</string>
     <string name="private_IP">This is a private IP address</string>
     <string name="ip_lookup">Looking Up IP address Info…</string>
     <string name="ip_lookup_error">Error looking up IP address</string>
+    <string name="no_net">Network is unreachable</string>
+    <string name="no_net6">Network is unreachable or network does not support IPv6</string>
 </resources>
