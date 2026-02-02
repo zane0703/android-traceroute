@@ -1,4 +1,5 @@
 <resources>
+    <string name="hostname">Hostname</string>
     <string name="app_name">Traceroute</string>
     <string name="ok">OK</string>
     <string name="start">Start</string>
@@ -7,7 +8,8 @@
     <string name="copied">Copied</string>
     <string name="time_out">Request timed out.</string>
     <string name="unknown_host">Unknown Host&#160;</string>
-    <string name="no_ipv6"><br/>&#160;or no IPv6 address available.</string>
+    <string name="no_ipv6"><br/>Host %1$s dose not have any IPv6 address available.</string>
+    <string name="no_ipv4"><br/>Host %1$s dose not have any IPv4 address available.</string>
     <string name="unreachable">Destination Host Unreachable</string>
     <string name="trace_stop">Trace Stopped</string>
     <string name="stop">Stop</string>

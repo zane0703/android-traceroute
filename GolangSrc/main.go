@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -22,7 +23,12 @@ type (
 		start              bool
 		pingResultCallback PingResultCallback
 		onErrorCallback    OnErrorCallback
+		pingTool           PingTool
 	}
+	PingTool struct {
+		Process *os.Process
+	}
+
 	PingResult struct {
 		IpLookupStatus bool
 		IpAddress      string
@@ -63,7 +69,7 @@ var command = map[bool]string{true: "/system/bin/ping6", false: "/system/bin/pin
 var ipLens = map[bool]int{true: net.IPv6len, false: net.IPv4len}
 
 func NewTracetool(pingResultCallback PingResultCallback, onErrorCallback OnErrorCallback) *Tracetool {
-	return &Tracetool{pingResultCallback: pingResultCallback, onErrorCallback: onErrorCallback}
+	return &Tracetool{pingResultCallback: pingResultCallback, onErrorCallback: onErrorCallback, pingTool: PingTool{}}
 }
 
 func readOutput(reader io.Reader, out chan *readerOutput) {
@@ -89,7 +95,7 @@ func readOutput(reader io.Reader, out chan *readerOutput) {
 	out <- &readerOutput{Out: outStr, delay: delayNano}
 }
 
-func Ping(ipAddress string, ttl byte, isIpv6 bool) (*PingResult, error) {
+func (p *PingTool) Ping(ipAddress string, ttl byte, isIpv6 bool) (*PingResult, error) {
 	var result *PingResult
 	cmd := exec.Command(command[isIpv6], "-c1", fmt.Sprintf("-t%d", ttl), ipAddress)
 	stdout, err := cmd.StdoutPipe()
@@ -98,9 +104,11 @@ func Ping(ipAddress string, ttl byte, isIpv6 bool) (*PingResult, error) {
 	}
 	readerOutputChan := make(chan *readerOutput, 1)
 	go readOutput(stdout, readerOutputChan)
-	err = cmd.Run()
-
-	if err != nil {
+	if err = cmd.Start(); err != nil {
+		return nil, err
+	}
+	p.Process = cmd.Process
+	if err = cmd.Wait(); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			switch exitErr.ExitCode() {
 			case 1:
@@ -146,6 +154,7 @@ func Ping(ipAddress string, ttl byte, isIpv6 bool) (*PingResult, error) {
 	close(readerOutputChan)
 	if readerOut.err != nil {
 		logger.Println(err)
+
 		return nil, readerOut.err
 	}
 	result = &PingResult{IpLookupStatus: true, Complated: true}
@@ -156,8 +165,16 @@ func Ping(ipAddress string, ttl byte, isIpv6 bool) (*PingResult, error) {
 	return result, nil
 }
 
-func (t *Tracetool) Stop() {
+func (t *Tracetool) Stop() error {
 	t.start = false
+	if t.pingTool.Process == nil {
+		return nil
+	}
+	if err := t.pingTool.Process.Signal(syscall.SIGINT); err != nil {
+		logger.Println(err)
+		return err
+	}
+	return nil
 }
 
 func (t *Tracetool) TracertRoute(hostname string, isIpv6 bool) {
@@ -168,6 +185,12 @@ func (t *Tracetool) tracertRoute(hostname string, isIpv6 bool) {
 	t.start = true
 	ips, err := net.LookupIP(hostname)
 	if err != nil {
+		if dnsErr, ok := err.(*net.DNSError); ok {
+			if dnsErr.IsNotFound {
+				t.onErrorCallback.Run(errors.New("noHost"))
+				return
+			}
+		}
 		log.Println("Could not get IPs for ", hostname, err)
 		t.onErrorCallback.Run(err)
 		return
@@ -190,7 +213,7 @@ func (t *Tracetool) tracertRoute(hostname string, isIpv6 bool) {
 	}
 	for i := 1; (i < 65) && t.start; i++ {
 		ttl := byte(i)
-		result, err := Ping(ipAddress, ttl, isIpv6)
+		result, err := t.pingTool.Ping(ipAddress, ttl, isIpv6)
 		if err != nil {
 			t.onErrorCallback.Run(err)
 			return

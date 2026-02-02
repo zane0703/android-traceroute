@@ -73,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
         listView.setAdapter(adapter);
         listView.setOnItemLongClickListener(this::onItemLongClick);
         listView.setOnItemClickListener(this::onItemClick);
+        button.setOnClickListener(this::onButtonClick);
     }
 
     private void onItemClick(AdapterView<?> var1, View var2, int var3, long var4) {
@@ -144,7 +145,11 @@ public class MainActivity extends AppCompatActivity {
         if (this.start) {
             this.start = false;
             Toast.makeText(this, R.string.stopping, Toast.LENGTH_LONG).show();
-            tracetool.stop();
+            try {
+                tracetool.stop();
+            } catch (Exception e) {
+                Log.e("Exception", e.toString(), e);
+            }
             return;
         }
 
@@ -182,11 +187,14 @@ public class MainActivity extends AppCompatActivity {
                 case "stoped":
                     this.runOnUiThread(() -> Toast.makeText(this, R.string.trace_stop, Toast.LENGTH_LONG).show());
                     break;
+                case "noHost" :
+                    this.runOnUiThread(() -> showDialogBox(this.getString(R.string.unknown_host) + this.editText.getText()));
+                    break;
                 case "noIPv6":
-                    this.runOnUiThread(() -> showDialogBox(this.getString(R.string.unknown_host) + this.editText.getText() + this.getString(R.string.no_ipv6)));
+                    this.runOnUiThread(() -> showDialogBox(this.getString(R.string.no_ipv6, this.editText.getText())));
                     break;
                 case "noIPv4":
-                    this.runOnUiThread(() -> showDialogBox(this.getString(R.string.unknown_host) + this.editText.getText()));
+                    this.runOnUiThread(() -> showDialogBox(this.getString(R.string.no_ipv4, this.editText.getText())));
                     break;
                 case "noNet6":
                     this.runOnUiThread(() -> showDialogBox(R.string.no_net6));
