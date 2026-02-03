@@ -1,11 +1,11 @@
 <resources>
     <string name="hostname">Hostname:</string>
     <string name="timeout_label">Timeout:</string>
-    <string name="invaild_timeout">Invalid timeout value 1 to 127 only</string>
+    <string name="Invalid_timeout">Invalid timeout value 1 to 127 only</string>
     <string name="app_name">Traceroute</string>
     <string name="ok">OK</string>
     <string name="start">Start</string>
-    <string name="complated">Trace Completed</string>
+    <string name="completed">Trace Completed</string>
     <string name="copied">Copied</string>
     <string name="time_out">Request timed out.</string>
     <string name="unknown_host">Unknown Host&#160;</string>

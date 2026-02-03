@@ -161,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
                 throw new NumberFormatException();
             }
         }catch(NumberFormatException e) {
-            showDialogBox(R.string.invaild_timeout);
+            showDialogBox(R.string.Invalid_timeout);
             return;
         }
         listItems.clear();
@@ -183,7 +183,7 @@ public class MainActivity extends AppCompatActivity {
         this.runOnUiThread(adapter::notifyDataSetChanged);
         if (result != null && result.getComplated()) {
             this.runOnUiThread(() -> {
-                Toast.makeText(this, R.string.complated, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, R.string.completed, Toast.LENGTH_LONG).show();
                 onTraceStopped();
             });
         }

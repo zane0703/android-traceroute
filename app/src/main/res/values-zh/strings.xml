@@ -2,11 +2,11 @@
 <resources>
     <string name="hostname">主机名称:</string>
     <string name="timeout_label">超时时间:</string>
-    <string name="invaild_timeout">无效的超时值，仅限 1 到 127。</string>
+    <string name="Invalid_timeout">无效的超时值，仅限 1 到 127。</string>
     <string name="app_name">路由追踪</string>
     <string name="ok">好</string>
     <string name="start">启动</string>
-    <string name="complated">路由追踪完成</string>
+    <string name="completed">路由追踪完成</string>
     <string name="copied">复制完成</string>
     <string name="time_out">网络请求超时。</string>
     <string name="unknown_host">未知域名&#160;</string>
@@ -14,11 +14,11 @@
     <string name="no_ipv4"><br/>主机名称  %1$s 没有可用的 IPv4 地址。</string>
     <string name="unreachable">网络目标不可达</string>
     <string name="trace_stop">路由追踪停止</string>
-    <string name="stop">停</string>
+    <string name="stop">停止</string>
     <string name="stopping">正在停止…</string>
     <string name="ISP">网络服务商</string>
     <string name="city">城市</string>
-    <string name="org">集团</string>
+    <string name="org">组织/集团</string>
     <string name="country">国家</string>
     <string name="region">区域</string>
     <string name="ip_address">IP 地址</string>
@@ -27,6 +27,6 @@
     <string name="private_IP">这是一个私有 IP 地址</string>
     <string name="ip_lookup">正在查找 IP 地址资料…</string>
     <string name="ip_lookup_error">查找 IP 地址时出错</string>
-    <string name="no_net">网络无法连接</string>
-    <string name="no_net6"> 没有可用的 IPv6 地址。</string>
+    <string name="no_net">网络无法连接。</string>
+    <string name="no_net6"> 网络无法连接或不支持 IPv6。</string>
 </resources>
