@@ -39,7 +39,8 @@ import nettools.Tracetool;
 public class MainActivity extends AppCompatActivity {
     private ListView listView;
     private Button button;
-    private EditText editText;
+    private EditText editHostname;
+    private EditText editTimeout;
     private MaterialSwitch isIpv6Switch;
     private IpAdapter adapter;
     private ArrayList<PingResult> listItems = new ArrayList<>(65);
@@ -65,7 +66,8 @@ public class MainActivity extends AppCompatActivity {
         inflter = LayoutInflater.from(this);
         button = findViewById(R.id.button);
         listView = findViewById(R.id.listView);
-        editText = findViewById(R.id.editTextText);
+        editHostname = findViewById(R.id.editHostname);
+        editTimeout = findViewById(R.id.editTimeout);
         isIpv6Switch = findViewById(R.id.switch1);
         clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         adapter = new IpAdapter(this.getBaseContext(), listItems);
@@ -152,18 +154,28 @@ public class MainActivity extends AppCompatActivity {
             }
             return;
         }
-
+        byte timeout;
+        try {
+            timeout = Byte.parseByte(editTimeout.getText().toString());
+            if (timeout < 1) {
+                throw new NumberFormatException();
+            }
+        }catch(NumberFormatException e) {
+            showDialogBox(R.string.invaild_timeout);
+            return;
+        }
         listItems.clear();
         adapter.notifyDataSetChanged();
         this.start = true;
         listView.addFooterView(mProgressBarFooter);
         button.setText(R.string.stop);
-        editText.setEnabled(false);
+        editHostname.setEnabled(false);
+        editTimeout.setEnabled(false);
         isIpv6Switch.setEnabled(false);
 
         boolean isIPV6 = isIpv6Switch.isChecked();
-        String hostName = editText.getText().toString().trim();
-        tracetool.tracertRoute(hostName, isIPV6);
+        String hostName = editHostname.getText().toString().trim();
+        tracetool.tracertRoute(hostName, timeout,isIPV6);
     }
 
     private void PingResultCallback(PingResult result) {
@@ -188,13 +200,13 @@ public class MainActivity extends AppCompatActivity {
                     this.runOnUiThread(() -> Toast.makeText(this, R.string.trace_stop, Toast.LENGTH_LONG).show());
                     break;
                 case "noHost" :
-                    this.runOnUiThread(() -> showDialogBox(this.getString(R.string.unknown_host) + this.editText.getText()));
+                    this.runOnUiThread(() -> showDialogBox(this.getString(R.string.unknown_host) + this.editHostname.getText()));
                     break;
                 case "noIPv6":
-                    this.runOnUiThread(() -> showDialogBox(this.getString(R.string.no_ipv6, this.editText.getText())));
+                    this.runOnUiThread(() -> showDialogBox(this.getString(R.string.no_ipv6, this.editHostname.getText())));
                     break;
                 case "noIPv4":
-                    this.runOnUiThread(() -> showDialogBox(this.getString(R.string.no_ipv4, this.editText.getText())));
+                    this.runOnUiThread(() -> showDialogBox(this.getString(R.string.no_ipv4, this.editHostname.getText())));
                     break;
                 case "noNet6":
                     this.runOnUiThread(() -> showDialogBox(R.string.no_net6));
@@ -220,8 +232,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void onTraceStopped() {
         button.setText(R.string.start);
-        editText.setEnabled(true);
+        editHostname.setEnabled(true);
         isIpv6Switch.setEnabled(true);
+        editTimeout.setEnabled(true);
         this.start = false;
         listView.removeFooterView(mProgressBarFooter);
     }

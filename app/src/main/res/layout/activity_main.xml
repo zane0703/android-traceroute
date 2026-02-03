@@ -8,38 +8,65 @@
     tools:context=".MainActivity"
     android:orientation="vertical"
     >
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:showDividers="middle"
+        >
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/hostname"
 
-
+            />
+    <EditText
+        android:hint="@string/hostname"
+        android:id="@+id/editHostname"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ems="10"
+        android:inputType="textEmailAddress"
+        android:text="google.com"
+        />
+    </LinearLayout>
     <LinearLayout
         android:orientation="horizontal"
         android:id="@+id/constraintLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.0">
+        android:showDividers="middle"
+        >
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/timeout_label"
 
+            />
         <EditText
-            android:hint="@string/hostname"
-            android:id="@+id/editTextText"
-            android:layout_width="0dp"
             android:layout_weight="1"
-            android:layout_height="match_parent"
+            android:hint="@string/hostname"
+            android:id="@+id/editTimeout"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
             android:ems="10"
-            android:inputType="text"
-            android:text="google.com"
+            android:digits="1234567890"
+            android:inputType="number"
+            android:layout_marginEnd="20dp"
+            android:text="10"
             />
         <com.google.android.material.materialswitch.MaterialSwitch
+            android:layout_weight="1"
             android:id="@+id/switch1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_margin="5dp"
-            android:text="@string/ipv6" />
+            android:text="IPv6:"
+            />
         <Button
+            android:layout_weight="1"
             android:id="@+id/button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

@@ -95,9 +95,9 @@ func readOutput(reader io.Reader, out chan *readerOutput) {
 	out <- &readerOutput{Out: outStr, delay: delayNano}
 }
 
-func (p *PingTool) Ping(ipAddress string, ttl byte, isIpv6 bool) (*PingResult, error) {
+func (p *PingTool) Ping(ipAddress string, ttl byte, timeOut byte, isIpv6 bool) (*PingResult, error) {
 	var result *PingResult
-	cmd := exec.Command(command[isIpv6], "-c1", fmt.Sprintf("-t%d", ttl), ipAddress)
+	cmd := exec.Command(command[isIpv6], "-c1", fmt.Sprintf("-t%d", ttl), fmt.Sprintf("-W%d", timeOut), ipAddress)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, err
@@ -176,12 +176,11 @@ func (t *Tracetool) Stop() error {
 	}
 	return nil
 }
-
-func (t *Tracetool) TracertRoute(hostname string, isIpv6 bool) {
-	go t.tracertRoute(hostname, isIpv6)
+func (t *Tracetool) TracertRoute(hostname string, timeOut byte, isIpv6 bool) {
+	go t.tracertRoute(hostname, timeOut, isIpv6)
 }
 
-func (t *Tracetool) tracertRoute(hostname string, isIpv6 bool) {
+func (t *Tracetool) tracertRoute(hostname string, timeOut byte, isIpv6 bool) {
 	t.start = true
 	ips, err := net.LookupIP(hostname)
 	if err != nil {
@@ -213,7 +212,7 @@ func (t *Tracetool) tracertRoute(hostname string, isIpv6 bool) {
 	}
 	for i := 1; (i < 65) && t.start; i++ {
 		ttl := byte(i)
-		result, err := t.pingTool.Ping(ipAddress, ttl, isIpv6)
+		result, err := t.pingTool.Ping(ipAddress, ttl, timeOut, isIpv6)
 		if err != nil {
 			t.onErrorCallback.Run(err)
 			return
